@@ -1,0 +1,77 @@
+#region Using declarations
+using System;
+using System.Globalization;
+using System.IO;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Xml.Serialization;
+using NinjaTrader.Cbi;
+using NinjaTrader.Gui;
+using NinjaTrader.Gui.Chart;
+using NinjaTrader.Gui.SuperDom;
+using NinjaTrader.Gui.Tools;
+using NinjaTrader.Data;
+using NinjaTrader.NinjaScript;
+using NinjaTrader.Core.FloatingPoint;
+using NinjaTrader.NinjaScript.Indicators;
+using NinjaTrader.NinjaScript.DrawingTools;
+#endregion
+
+//This namespace holds Strategies in this folder and is required. Do not change it. 
+namespace NinjaTrader.NinjaScript.Strategies
+{
+	public class DownloadIntradayData : Strategy
+	{
+	    private string filePath;
+
+	    protected override void OnStateChange()
+	    {
+	        if (State == State.SetDefaults)
+	        {
+	            Description = @"My strategy for exporting OHLCV data.";
+	            Name = "DownloadIntradayData";
+	        }
+	        else if (State == State.Configure)
+	        {
+	            // Set the file path for the CSV file
+	            filePath = Core.Globals.UserDataDir + "OHLCVData.csv";
+	        }
+	    }
+
+	    protected override void OnBarUpdate()
+		{
+		    // Check if the file exists; if not, create it and write the header
+		    if (!File.Exists(filePath))
+		    {
+		        using (StreamWriter sw = File.CreateText(filePath))
+		        {
+		            sw.WriteLine("DateTime,Open,High,Low,Close,Volume");
+		        }
+		    }
+
+		    // Write the bar data to the file
+		    using (StreamWriter sw = File.AppendText(filePath))
+		    {
+		        DateTime barTime = Time[0];
+		        string formattedDateTime = barTime.ToString("yyyyMMdd HHmmss");
+
+		        string line = String.Format("{0},{1},{2},{3},{4},{5}",
+		            formattedDateTime,
+		            Open[0],
+		            High[0],
+		            Low[0],
+		            Close[0],
+		            Volume[0]);
+
+		        sw.WriteLine(line);
+		    }
+		}
+	}
+}
