@@ -24,54 +24,77 @@ using NinjaTrader.NinjaScript.Indicators;
 using NinjaTrader.NinjaScript.DrawingTools;
 #endregion
 
+
 //This namespace holds Strategies in this folder and is required. Do not change it. 
 namespace NinjaTrader.NinjaScript.Strategies
 {
-	public class DownloadIntradayData : Strategy
+	public class UpdateDownload : Strategy
 	{
 	    private string filePath;
+		private LudwigLevels500 ludwigLevels500;
+		private DateTime lastRecordedTime;
 
 	    protected override void OnStateChange()
 	    {
 	        if (State == State.SetDefaults)
 	        {
-	            Description = @"My strategy for exporting OHLCV data.";
-	            Name = "DownloadIntradayData";
+	            Description = @"My strategy for exporting OHLCV and updating the file as per chart updates.";
+	            Name = "UpdateDownload";
 	        }
 	        else if (State == State.Configure)
 	        {
 	            // Set the file path for the CSV file
-	            filePath = Core.Globals.UserDataDir + "OHLCVData.csv";
+	            filePath = "C:\\filepath\\" + "OHLCV.csv";
+				
+				// Initialize lastRecordedTime
+            	lastRecordedTime = DateTime.MinValue;
+				
+				if (File.Exists(filePath))
+	            {
+	                // Read the last line of the file
+	                string lastLine = File.ReadLines(filePath).LastOrDefault();
+	                if (!string.IsNullOrEmpty(lastLine))
+	                {
+	                    string[] parts = lastLine.Split(',');
+	                    DateTime lastTime;
+						if (parts.Length > 0 && DateTime.TryParse(parts[0], out lastTime))
+	                    {
+	                        lastRecordedTime = lastTime;
+	                    }
+	                }
+	            }
 	        }
 	    }
 
 	    protected override void OnBarUpdate()
 		{
-		    // Check if the file exists; if not, create it and write the header
+		   // Check if the file exists; if not, create it and write the header
 		    if (!File.Exists(filePath))
 		    {
 		        using (StreamWriter sw = File.CreateText(filePath))
 		        {
-		            sw.WriteLine("DateTime,Open,High,Low,Close,Volume");
+		            sw.WriteLine("datetime,open,high,low,close,volume");
 		        }
 		    }
-
-		    // Write the bar data to the file
+			
+			DateTime barTime = Time[0];
+	        if (barTime <= lastRecordedTime)
+	        {
+	            return; // Skip if the data is already recorded
+	        }
+			
+			string formattedDateTime = barTime.ToString("yyyy-MM-dd HH:mm:ss");
+			
 		    using (StreamWriter sw = File.AppendText(filePath))
-		    {
-		        DateTime barTime = Time[0];
-		        string formattedDateTime = barTime.ToString("yyyyMMdd HHmmss");
+	        {
+	            string line = String.Format(CultureInfo.InvariantCulture,
+	                "{0},{1},{2},{3},{4},{5}",
+	                formattedDateTime, Open[0], High[0], Low[0], Close[0], Volume[0]);
 
-		        string line = String.Format("{0},{1},{2},{3},{4},{5}",
-		            formattedDateTime,
-		            Open[0],
-		            High[0],
-		            Low[0],
-		            Close[0],
-		            Volume[0]);
+	            sw.WriteLine(line);
+	        }
 
-		        sw.WriteLine(line);
-		    }
-		}
+	        lastRecordedTime = barTime; // Update the last recorded time
+	    }
 	}
 }
